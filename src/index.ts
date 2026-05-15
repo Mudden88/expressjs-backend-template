@@ -168,6 +168,7 @@ app.get(`${route}/logout`, auth, async (req, res) => {
   }
 });
 
+// Use auth middleware for protected routes
 app.get(`${route}/profile`, auth, async (req, res) => {
   return res.status(200).json({
     success: true,
