@@ -1,101 +1,123 @@
 # Backend Template (Express + TypeScript + PostgreSQL)
 
-This backend is a template for web applications using Node.js, Express, TypeScript, and PostgreSQL. It includes user authentication (JWT, cookies), registration, login/logout, and profile endpoints. The backend is ready to serve a built frontend (e.g., Angular) from the `Frontend/dist` directory.
+A starter backend using Node.js, Express 5, TypeScript, and PostgreSQL. It provides user registration, login/logout, and profile endpoints with JWT authentication stored in HTTP-only cookies.
 
 ## Features
 
-- Express.js server with TypeScript
-- PostgreSQL connection using `pg`
-- User registration and login with hashed passwords (bcrypt)
-- JWT authentication (stored in HTTP-only cookies)
-- CORS and JSON body parsing
-- API routes under `/api/v1`
-- Serves static frontend files for production (Angular/Vite/React, etc.)
-- Example middleware for authentication
+- Express 5 server with TypeScript
+- PostgreSQL via `pg` (`Pool` for queries, schema bootstrap on startup)
+- User registration and login with bcrypt-hashed passwords
+- JWT in HTTP-only `access_token` cookie (1h expiry)
+- CORS, JSON body parsing, and `cookie-parser`
+- Modular layout: `app.ts` for middleware/routes, `index.ts` for startup
+- Auth middleware for protected routes
+- Shared request types in `src/interface/`
 
-## Folder Structure
+## Folder structure
 
 ```
-Backend/
+Backend Template/
   src/
-    index.ts         # Main server file
-    db/db.ts         # Database connection and init
-    middleware/auth/ # Auth middleware
-  .env               # Environment variables
-  package.json       # NPM scripts and dependencies
-  tsconfig.json      # TypeScript config
+    index.ts                          # Loads env, initializes DB, starts server
+    app.ts                            # Express app (middleware + routers)
+    db/
+      db.ts                           # Connection pool and initDb()
+      init.sql                        # user_accounts schema (run on startup)
+    routes/
+      user/
+        user.ts                       # Register, login, logout, profile
+    middleware/
+      auth/
+        auth.ts                       # JWT cookie verification
+    interface/
+      interface.ts                    # AuthRequest, DecodedToken
+  .env                                # Environment variables (not committed)
+  package.json
+  tsconfig.json
 ```
 
-## Setup Instructions
+## Setup
 
-### 1. Prerequisites
+### Prerequisites
 
-- Node.js (v18+ recommended)
+- Node.js 18+
 - npm
 - PostgreSQL (local or Docker)
 
-### 2. Clone and Install
+### Install
 
 ```bash
-cd Backend
 npm install
 ```
 
-### 3. Configure Environment Variables
+### Environment variables
 
-Create a `.env` file in `Backend/`:
+Create a `.env` file in the project root:
 
-```
+```env
 PORT=3000
 DB_USER=dbuser
-DB_HOST=dbhost
-DB_DATABASE=database
-DB_PASSWORD=dbpassword
-DB_PORT=dbport
+DB_HOST=localhost
+DB_DATABASE=your_database
+DB_PASSWORD=your_password
+DB_PORT=5432
 JWT_SECRET=your_jwt_secret
 NODE_ENV=development
 ```
 
-Adjust values as needed for your setup.
+### Database
 
-### 4. Database Setup
+1. Create an empty PostgreSQL database matching `DB_DATABASE`.
+2. Start the server (`npm run dev` or `npm start`). On startup, `initDb()` connects and runs `src/db/init.sql`, creating the `user_accounts` table if it does not exist.
 
-- Ensure PostgreSQL is running and accessible.
-- Create the database and user table as needed (see `initDb` in `src/db/db.ts`).
+### Run
 
-### 5. Build and Run
-
-#### Development (auto-reload with nodemon):
+**Development (nodemon):**
 
 ```bash
 npm run dev
 ```
 
-#### Production:
+**Production:**
 
 ```bash
 npm run build
 npm start
 ```
 
-### 6. API Endpoints
+The compiled app runs from `dist/` (`node dist/index.js`).
 
-- `POST /api/v1/register_account` — Register new user
-- `POST /api/v1/login` — Login, returns JWT in cookie
-- `GET  /api/v1/logout` — Logout (requires auth)
-- `GET  /api/v1/profile` — Get current user (requires auth)
+## API endpoints
 
-### 7. Serving Frontend
+Base path: `/api/v1/user`
 
-- Build your frontend (e.g., Angular) to `Frontend/dist/frontend/browser`.
-- The backend will serve static files from this directory in production.
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `POST` | `/register-account` | No | Register (`username`, `email`, `password`) |
+| `POST` | `/login` | No | Login (`username`, `password`); sets `access_token` cookie |
+| `POST` | `/logout` | Yes | Clears cookie, sets `is_active = false` |
+| `GET` | `/profile` | Yes | Returns JWT payload as `user` |
+
+**Examples:**
+
+- `POST /api/v1/user/register-account`
+- `POST /api/v1/user/login`
+- `POST /api/v1/user/logout`
+- `GET /api/v1/user/profile`
+
+Protected routes require a valid `access_token` HTTP-only cookie (set on login).
+
+### Response shape
+
+Success responses generally use `{ success: true, ... }`. Errors use `{ success: false, error: "..." }` (auth middleware may use `message` for 401).
 
 ## Notes
 
-- All sensitive routes require a valid JWT in the `access_token` cookie.
-- Update `JWT_SECRET` in `.env` for production use.
-- Adjust CORS settings as needed for your frontend.
+- Set a strong `JWT_SECRET` in production.
+- Cookies use `secure: true` when `NODE_ENV=production`.
+- CORS is enabled for all origins by default; tighten for your frontend origin in production.
+- This template is API-only; add static file serving or a reverse proxy if you need to host a frontend from the same process.
 
 ---
 
-This template is intended as a starting point for fullstack web apps. Extend as needed for your project!
+MIT — extend as needed for your project.
